@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # API Server - Main Flask application
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pumpfun-api
+    ports:
+      - "5000:5000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - FLASK_ENV=production
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+      - pumpfun-db:/app
+    restart: unless-stopped
+    networks:
+      - pumpfun-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Monitoring Service - Real-time cluster detection
+  monitor:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pumpfun-monitor
+    command: python src/monitor_service.py
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - SCAN_INTERVAL=60
+      - MIN_CLUSTER_SCORE=50
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+      - pumpfun-db:/app
+    restart: unless-stopped
+    networks:
+      - pumpfun-network
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pumpfun-db:
+    driver: local
+
+networks:
+  pumpfun-network:
+    driver: bridge
+

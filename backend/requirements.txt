@@ -1,0 +1,7 @@
+flask==3.0.0
+flask-cors==4.0.0
+requests==2.31.0
+solana==0.34.3
+solders==0.21.0
+websockets==11.0.3
+
